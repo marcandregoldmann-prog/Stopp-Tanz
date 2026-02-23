@@ -1,0 +1,5 @@
+{
+  "name": "Der verrückte Stopptanz",
+  "description": "Ein kinderfreundliches Partyspiel mit Musik, Posen und viel Spaß!",
+  "requestFramePermissions": ["screen-wake-lock"]
+}
