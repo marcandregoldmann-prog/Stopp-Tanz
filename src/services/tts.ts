@@ -1,28 +1,54 @@
 /**
- * Placeholder function for a high-quality Text-to-Speech service (e.g., Google Cloud TTS).
- * This function can be expanded later to use an API key and fetch audio from a cloud service.
+ * Text-to-Speech service using the browser's native Web Speech API.
+ * This works offline and requires no API key.
  */
 export async function speakPose(text: string): Promise<void> {
-  console.log(`[TTS Service] Preparing to speak: "${text}"`);
+  console.log(`[TTS Service] Speaking: "${text}"`);
   
-  // TODO: Implement actual API call to Google Cloud TTS or similar service.
-  // Example implementation:
-  // const response = await fetch('https://texttospeech.googleapis.com/v1/text:synthesize?key=YOUR_API_KEY', {
-  //   method: 'POST',
-  //   body: JSON.stringify({
-  //     input: { text },
-  //     voice: { languageCode: 'de-DE', name: 'de-DE-Wavenet-F' },
-  //     audioConfig: { audioEncoding: 'MP3' }
-  //   })
-  // });
-  // const data = await response.json();
-  // const audio = new Audio('data:audio/mp3;base64,' + data.audioContent);
-  // await audio.play();
-
-  // For now, we simulate the delay of speech generation and playback.
   return new Promise((resolve) => {
+    // Cancel any ongoing speech to prevent queue buildup
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'de-DE'; // Set language to German
+    utterance.rate = 0.9; // Slightly slower for clarity
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+
+    // Attempt to select a German voice, preferring Google voices on Android if available
+    const voices = window.speechSynthesis.getVoices();
+    const germanVoice = voices.find(voice => voice.lang.startsWith('de') && voice.name.includes('Google'))
+                     || voices.find(voice => voice.lang.startsWith('de'));
+
+    if (germanVoice) {
+      utterance.voice = germanVoice;
+    }
+
+    let resolved = false;
+    const safeResolve = () => {
+      if (!resolved) {
+        resolved = true;
+        resolve();
+      }
+    };
+
+    utterance.onend = () => {
+      safeResolve();
+    };
+
+    utterance.onerror = (event) => {
+      console.error('TTS Error:', event);
+      safeResolve(); // Resolve anyway to avoid blocking the game flow
+    };
+
+    // Fallback timeout in case onend never fires
     setTimeout(() => {
-      resolve();
-    }, 1000); // Simulate 1 second of speech
+      if (!resolved) {
+        console.warn('TTS timed out, resolving promise.');
+        safeResolve();
+      }
+    }, 5000);
+
+    window.speechSynthesis.speak(utterance);
   });
 }
