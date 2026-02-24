@@ -193,9 +193,34 @@ export default function MainGame({ players, settings, audioFiles, onBack }: Prop
       {/* Visual Feedback / Main Content */}
       <div className="flex-1 w-full flex flex-col items-center justify-center relative">
         
+        {/* Avatar Circle */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-0 h-0 flex items-center justify-center z-0 pointer-events-none">
+          {players.map((player, index) => {
+            const angle = (index / players.length) * 360;
+            return (
+              <div
+                key={player.id}
+                className="absolute top-0 left-0 flex items-center justify-center w-12 h-12"
+                style={{
+                  transform: `rotate(${angle}deg) translateY(-13rem) rotate(-${angle}deg)`
+                }}
+              >
+                <div
+                  className={`text-5xl transition-transform ${gameState === 'playing' ? 'animate-dance' : ''}`}
+                  style={{
+                    animationDelay: `${index * 0.15}s`
+                  }}
+                >
+                  {player.avatar}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
         {gameState === 'playing' && (
-          <div className="flex flex-col items-center animate-fade-in">
-            <div className="w-64 h-64 md:w-80 md:h-80 bg-green-400 rounded-full flex items-center justify-center shadow-2xl animate-pulse-fast">
+          <div className="flex flex-col items-center animate-fade-in z-10">
+            <div className="w-52 h-52 md:w-64 md:h-64 bg-green-400 rounded-full flex items-center justify-center shadow-2xl animate-pulse-fast">
               <Music size={100} className="text-white animate-bounce-slow" />
             </div>
             <h2 className="text-4xl md:text-6xl font-black text-green-800 mt-12 text-center">
@@ -205,7 +230,7 @@ export default function MainGame({ players, settings, audioFiles, onBack }: Prop
         )}
 
         {gameState === 'paused' && currentPose && (
-          <div className="flex flex-col items-center animate-pop-in text-center px-4">
+          <div className="flex flex-col items-center animate-pop-in text-center px-4 relative z-10">
             <div className="text-[150px] md:text-[200px] leading-none drop-shadow-2xl mb-8">
               {currentPose.emoji}
             </div>
@@ -216,7 +241,7 @@ export default function MainGame({ players, settings, audioFiles, onBack }: Prop
         )}
 
         {gameState === 'countdown' && (
-          <div className="flex flex-col items-center animate-pop-in">
+          <div className="flex flex-col items-center animate-pop-in relative z-10">
             <div className="text-[200px] md:text-[250px] font-black text-yellow-600 drop-shadow-2xl">
               {countdown}
             </div>
@@ -227,7 +252,7 @@ export default function MainGame({ players, settings, audioFiles, onBack }: Prop
         )}
 
         {gameState === 'cooldown' && (
-          <div className="flex flex-col items-center animate-fade-in text-center">
+          <div className="flex flex-col items-center animate-fade-in text-center relative z-10">
             <div className="text-[100px] md:text-[150px] mb-8">
               🎵
             </div>
