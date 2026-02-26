@@ -21,6 +21,7 @@ export default function MainGame({ players, settings, audioFiles, onBack }: Prop
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const poseAudioRef = useRef<HTMLAudioElement | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
 
   // Screen Wake Lock API
@@ -95,10 +96,12 @@ export default function MainGame({ players, settings, audioFiles, onBack }: Prop
     };
   }, [currentSongIndex, audioFiles]);
 
-  // Cleanup on unmount
+  // Pre-create pose audio element on mount so browsers don't block it as a new element in a timer
   useEffect(() => {
+    poseAudioRef.current = new Audio();
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
+      if (countdownTimerRef.current) clearTimeout(countdownTimerRef.current);
       if (audioRef.current) {
         audioRef.current.pause();
       }
@@ -158,16 +161,21 @@ export default function MainGame({ players, settings, audioFiles, onBack }: Prop
 
     console.log("Versuche abzuspielen:", audioPath);
 
-    poseAudioRef.current = new Audio(audioPath);
-    poseAudioRef.current.play().catch(e => {
-      console.error("Pose audio play error:", e);
-    });
+    // Reuse existing Audio element (pre-created on mount) to avoid autoplay blocks
+    if (poseAudioRef.current) {
+      poseAudioRef.current.src = audioPath;
+      poseAudioRef.current.load();
+      poseAudioRef.current.play().catch(e => {
+        console.error("Pose audio play error:", e);
+      });
+    }
 
     const minPause = settings.minPauseTime * 1000;
     const maxPause = settings.maxPauseTime * 1000;
     const randomPauseTime = Math.floor(Math.random() * (maxPause - minPause + 1)) + minPause;
 
-    timerRef.current = setTimeout(() => {
+    // Use separate ref so the game loop effect cleanup doesn't clear this timer
+    countdownTimerRef.current = setTimeout(() => {
       startCountdown();
     }, randomPauseTime);
   };
@@ -191,6 +199,7 @@ export default function MainGame({ players, settings, audioFiles, onBack }: Prop
 
   const handleManualNext = () => {
     if (timerRef.current) clearTimeout(timerRef.current);
+    if (countdownTimerRef.current) clearTimeout(countdownTimerRef.current);
     stopPoseAudio();
     setCurrentSongIndex(prev => (prev + 1) % audioFiles.length);
     setGameState('playing');
