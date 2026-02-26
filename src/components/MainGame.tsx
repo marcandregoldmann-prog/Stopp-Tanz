@@ -152,8 +152,16 @@ export default function MainGame({ players, settings, audioFiles, onBack }: Prop
     
     // Stop any previous pose audio and play new one
     stopPoseAudio();
-    poseAudioRef.current = new Audio(randomPose.audioFile);
-    poseAudioRef.current.play().catch(e => console.error("Pose audio play error:", e));
+
+    // Fix path for GitHub Pages: remove leading slash and prepend BASE_URL
+    const audioPath = `${import.meta.env.BASE_URL}${randomPose.audioFile.replace(/^\//, '')}`;
+
+    console.log("Versuche abzuspielen:", audioPath);
+
+    poseAudioRef.current = new Audio(audioPath);
+    poseAudioRef.current.play().catch(e => {
+      console.error("Pose audio play error:", e);
+    });
 
     const minPause = settings.minPauseTime * 1000;
     const maxPause = settings.maxPauseTime * 1000;
