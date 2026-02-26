@@ -14,4 +14,5 @@ export interface Settings {
 export interface Pose {
   text: string;
   emoji: string;
+  audioFile: string;
 }

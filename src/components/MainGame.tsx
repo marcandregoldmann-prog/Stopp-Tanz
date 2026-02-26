@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Player, Settings, Pose } from '../types';
 import { POSES } from '../constants';
-import { speakPose } from '../services/tts';
 import { ArrowLeft, Pause, Play, SkipForward, Music } from 'lucide-react';
 
 interface Props {
@@ -20,6 +19,7 @@ export default function MainGame({ players, settings, audioFiles, onBack }: Prop
   const [currentSongIndex, setCurrentSongIndex] = useState(0);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const poseAudioRef = useRef<HTMLAudioElement | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
 
@@ -56,6 +56,14 @@ export default function MainGame({ players, settings, audioFiles, onBack }: Prop
     };
   }, []);
 
+  // Stop pose audio helper
+  const stopPoseAudio = () => {
+    if (poseAudioRef.current) {
+      poseAudioRef.current.pause();
+      poseAudioRef.current.currentTime = 0;
+    }
+  };
+
   // Audio Setup
   useEffect(() => {
     if (audioFiles.length === 0) return;
@@ -87,8 +95,20 @@ export default function MainGame({ players, settings, audioFiles, onBack }: Prop
     };
   }, [currentSongIndex, audioFiles]);
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      stopPoseAudio();
+    };
+  }, []);
+
   const handleSongEnd = () => {
     setGameState('cooldown');
+    stopPoseAudio();
     if (timerRef.current) clearTimeout(timerRef.current);
     
     // 10 second cooldown before next song
@@ -130,14 +150,16 @@ export default function MainGame({ players, settings, audioFiles, onBack }: Prop
     const randomPose = POSES[Math.floor(Math.random() * POSES.length)];
     setCurrentPose(randomPose);
     
-    // Call TTS
-    speakPose(randomPose.text);
+    // Stop any previous pose audio and play new one
+    stopPoseAudio();
+    poseAudioRef.current = new Audio(randomPose.audioFile);
+    poseAudioRef.current.play().catch(e => console.error("Pose audio play error:", e));
 
     const minPause = settings.minPauseTime * 1000;
     const maxPause = settings.maxPauseTime * 1000;
     const randomPauseTime = Math.floor(Math.random() * (maxPause - minPause + 1)) + minPause;
 
-    setTimeout(() => {
+    timerRef.current = setTimeout(() => {
       startCountdown();
     }, randomPauseTime);
   };
@@ -154,12 +176,14 @@ export default function MainGame({ players, settings, audioFiles, onBack }: Prop
         clearInterval(interval);
         setGameState('playing');
         setCurrentPose(null);
+        stopPoseAudio(); // Stop pose audio when game resumes
       }
     }, 1000);
   };
 
   const handleManualNext = () => {
     if (timerRef.current) clearTimeout(timerRef.current);
+    stopPoseAudio();
     setCurrentSongIndex(prev => (prev + 1) % audioFiles.length);
     setGameState('playing');
   };
@@ -183,6 +207,7 @@ export default function MainGame({ players, settings, audioFiles, onBack }: Prop
       <button 
         onClick={() => {
           if (audioRef.current) audioRef.current.pause();
+          stopPoseAudio();
           onBack();
         }}
         className="absolute top-6 left-6 p-4 bg-white/50 hover:bg-white rounded-full shadow-sm backdrop-blur-sm transition-all z-10"
